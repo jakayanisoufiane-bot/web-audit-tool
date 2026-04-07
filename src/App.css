@@ -280,6 +280,9 @@ h1 { font-family: 'Space Mono', monospace; font-size: 20px; font-weight: 700; }
 .chevron-open { transform: rotate(180deg); }
 
 .page-content { padding: 0 14px 14px; }
+.page-clean { opacity: 0.6; }
+.page-clean:hover { opacity: 1; }
+.page-num-clean { background: #16a34a !important; }
 
 .no-issues {
   padding: 14px; text-align: center; color: var(--text2);
