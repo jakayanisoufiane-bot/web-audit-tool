@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback } from 'react'
 import { analyzeSection, aggregateResults } from './utils/gemini'
-import { captureFullPage, sliceImage, fileToSection } from './utils/screenshot'
+import { captureFullPage, captureMultiViewport, sliceImage, blobToSection, fileToSection } from './utils/screenshot'
 import { discoverPages } from './utils/crawler'
 import PageSection from './components/PageSection'
 import './App.css'
@@ -85,14 +85,27 @@ function App() {
           const path = new URL(pages[p]).pathname || '/'
           setProgress({ step: 'Capture', detail: `Page ${p + 1}/${pages.length} : ${path}`, current: p + 1, total: pages.length })
 
-          const blob = await captureFullPage(pages[p])
-          if (blob) {
+          // Try full-page screenshot first
+          const blob = await captureFullPage(pages[p], (status) => {
+            setProgress({ step: 'Capture', detail: `${path} — ${status}`, current: p + 1, total: pages.length })
+          })
+
+          if (blob && blob.size > 10000) {
+            // Full page captured → slice into sections
             const slices = await sliceImage(blob, path)
             allSections.push(...slices)
+          } else {
+            // Fallback: capture multiple viewport positions
+            setProgress({ step: 'Capture', detail: `${path} — Capture multi-viewport...`, current: p + 1, total: pages.length })
+            const viewportBlobs = await captureMultiViewport(pages[p], 5)
+            for (let v = 0; v < viewportBlobs.length; v++) {
+              const section = await blobToSection(viewportBlobs[v], `${path} — viewport ${v + 1}/${viewportBlobs.length}`)
+              allSections.push(section)
+            }
           }
 
           // Rate limit between pages
-          if (p < pages.length - 1) await sleep(1800)
+          if (p < pages.length - 1) await sleep(2000)
         }
 
         if (allSections.length === 0) {
